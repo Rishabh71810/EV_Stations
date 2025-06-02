@@ -85,16 +85,16 @@
           <!-- Loading state -->
           <div v-if="loading && !isMapLoaded" class="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
             <div class="text-center">
-              <div class="spinner w-8 h-8 mx-auto"></div>
-              <p class="text-gray-600 mt-2">Loading map...</p>
-            </div>
+                <div class="spinner w-8 h-8 mx-auto"></div>
+                <p class="text-gray-600 mt-2">Loading map...</p>
+              </div>
           </div>
           <!-- Error state -->
           <div v-else-if="mapError" class="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
             <div class="text-center text-red-600">
-              <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+                <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
               <p class="font-medium">Map Error</p>
-              <p class="text-sm">{{ mapError }}</p>
+                <p class="text-sm">{{ mapError }}</p>
               <button @click="initializeMap" class="btn-primary btn-sm mt-2">
                 Try Again
               </button>

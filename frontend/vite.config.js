@@ -17,5 +17,10 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     sourcemap: true
+  },
+  define: {
+    // Ensure proper environment variable defaults for production
+    'import.meta.env.VITE_USE_LOCAL_BACKEND': JSON.stringify(false),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('')
   }
 }) 

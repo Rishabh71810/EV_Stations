@@ -3,8 +3,8 @@ import { mockStationsAPI } from './mockApi'
 
 // Detect if we're in production and should use mock API
 const isProduction = import.meta.env.PROD
-const useLocalBackend = import.meta.env.VITE_USE_LOCAL_BACKEND === 'true'
-const useMockAPI = isProduction && !useLocalBackend
+const useLocalBackend = import.meta.env.VITE_USE_LOCAL_BACKEND === true
+const useMockAPI = isProduction || !useLocalBackend
 
 // Create axios instance only if we're not using mock API
 let api = null
@@ -290,6 +290,7 @@ export const stationsAPI = {
 // Add environment info for debugging
 console.log('🔧 API Configuration:', {
   isProduction,
+  useLocalBackend,
   useMockAPI,
   baseURL: useMockAPI ? 'Mock API' : (import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api')
 })
