@@ -1,6 +1,21 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
+      <!-- Demo Mode Banner -->
+      <div v-if="isDemoMode" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <i class="fas fa-info-circle text-blue-400"></i>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-blue-800">Demo Mode</h3>
+            <p class="mt-1 text-sm text-blue-700">
+              You're using the demo version. Use any email/password to login.
+            </p>
+          </div>
+        </div>
+      </div>
+
       <div>
         <div class="mx-auto h-12 w-12 text-primary-600">
           <i class="fas fa-charging-station text-4xl"></i>
@@ -88,6 +103,10 @@ export default {
     const loading = computed(() => authStore.loading)
     const error = computed(() => authStore.error)
 
+    const isDemoMode = computed(() => {
+      return import.meta.env.PROD && import.meta.env.VITE_USE_LOCAL_BACKEND !== 'true'
+    })
+
     const handleLogin = async () => {
       try {
         await authStore.login(form)
@@ -104,6 +123,7 @@ export default {
       form,
       loading,
       error,
+      isDemoMode,
       handleLogin
     }
   }

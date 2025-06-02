@@ -1,19 +1,33 @@
 <template>
   <div class="min-h-screen flex items-center justify-center bg-gray-50 py-12 px-4 sm:px-6 lg:px-8">
     <div class="max-w-md w-full space-y-8">
-      <div>
-        <div class="mx-auto h-12 w-12 text-primary-600">
-          <i class="fas fa-charging-station text-4xl"></i>
+      <!-- Demo Mode Banner -->
+      <div v-if="isDemoMode" class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+        <div class="flex">
+          <div class="flex-shrink-0">
+            <i class="fas fa-info-circle text-blue-400"></i>
+          </div>
+          <div class="ml-3">
+            <h3 class="text-sm font-medium text-blue-800">Demo Mode</h3>
+            <p class="mt-1 text-sm text-blue-700">
+              You're using the demo version. Registration will work but data won't be saved permanently.
+            </p>
+          </div>
         </div>
-        <h2 class="mt-6 text-center text-3xl font-extrabold text-gray-900">
-          Create your account
-        </h2>
-        <p class="mt-2 text-center text-sm text-gray-600">
-          Or
-          <router-link to="/login" class="font-medium text-primary-600 hover:text-primary-500">
-            sign in to your existing account
-          </router-link>
-        </p>
+      </div>
+
+      <div>
+        <div class="text-center">
+          <h2 class="mt-6 text-3xl font-extrabold text-gray-900">
+            Create your account
+          </h2>
+          <p class="mt-2 text-sm text-gray-600">
+            Or
+            <router-link to="/login" class="font-medium text-indigo-600 hover:text-indigo-500">
+              sign in to your existing account
+            </router-link>
+          </p>
+        </div>
       </div>
       
       <form class="mt-8 space-y-6" @submit.prevent="handleRegister">
@@ -135,6 +149,10 @@ export default {
              !validationError.value
     })
 
+    const isDemoMode = computed(() => {
+      return import.meta.env.PROD && import.meta.env.VITE_USE_LOCAL_BACKEND !== 'true'
+    })
+
     const handleRegister = async () => {
       if (!isFormValid.value) return
 
@@ -153,6 +171,7 @@ export default {
       error,
       validationError,
       isFormValid,
+      isDemoMode,
       handleRegister
     }
   }
