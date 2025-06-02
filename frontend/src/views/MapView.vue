@@ -4,7 +4,7 @@
     <div class="mb-6">
       <h1 class="text-3xl font-bold text-gray-900">Station Map</h1>
       <p class="mt-2 text-sm text-gray-700">
-        View charging stations on an interactive map
+        View charging stations on an interactive OpenStreetMap
       </p>
     </div>
 
@@ -59,6 +59,17 @@
               Clear Filters
             </button>
           </div>
+
+          <div>
+            <button 
+              @click="refreshStations" 
+              class="btn-primary btn-sm mt-6"
+              :disabled="loading"
+            >
+              <i class="fas fa-sync-alt mr-1" :class="{ 'animate-spin': loading }"></i>
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -71,39 +82,66 @@
           class="w-full h-96 rounded-lg"
           style="min-height: 500px;"
         >
-          <!-- Fallback content when Google Maps is not available -->
-          <div v-if="!isMapLoaded" class="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+          <!-- Loading state -->
+          <div v-if="loading && !isMapLoaded" class="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
             <div class="text-center">
-              <div v-if="loading" class="mb-4">
-                <div class="spinner w-8 h-8 mx-auto"></div>
-                <p class="text-gray-600 mt-2">Loading map...</p>
-              </div>
-              <div v-else-if="mapError" class="text-red-600">
-                <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
-                <p class="font-medium">Map unavailable</p>
-                <p class="text-sm">{{ mapError }}</p>
-              </div>
-              <div v-else>
-                <i class="fas fa-map text-gray-400 text-4xl mb-4"></i>
-                <p class="text-gray-600 font-medium">Interactive Map</p>
-                <p class="text-gray-500 text-sm">Google Maps integration will be available here</p>
-              </div>
+              <div class="spinner w-8 h-8 mx-auto"></div>
+              <p class="text-gray-600 mt-2">Loading map...</p>
+            </div>
+          </div>
+          <!-- Error state -->
+          <div v-else-if="mapError" class="w-full h-full flex items-center justify-center bg-gray-100 rounded-lg">
+            <div class="text-center text-red-600">
+              <i class="fas fa-exclamation-triangle text-2xl mb-2"></i>
+              <p class="font-medium">Map Error</p>
+              <p class="text-sm">{{ mapError }}</p>
+              <button @click="initializeMap" class="btn-primary btn-sm mt-2">
+                Try Again
+              </button>
             </div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Station Statistics -->
+    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
+      <div class="card">
+        <div class="card-body text-center">
+          <div class="text-2xl font-bold text-green-600">{{ stationStats.active }}</div>
+          <div class="text-sm text-gray-600">Active Stations</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body text-center">
+          <div class="text-2xl font-bold text-red-600">{{ stationStats.inactive }}</div>
+          <div class="text-sm text-gray-600">Inactive Stations</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body text-center">
+          <div class="text-2xl font-bold text-yellow-600">{{ stationStats.maintenance }}</div>
+          <div class="text-sm text-gray-600">Under Maintenance</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-body text-center">
+          <div class="text-2xl font-bold text-blue-600">{{ filteredStations.length }}</div>
+          <div class="text-sm text-gray-600">Showing on Map</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Station Info Panel -->
-    <div v-if="selectedStation" class="fixed bottom-4 right-4 w-80 card shadow-lg">
+    <div v-if="selectedStation" class="fixed bottom-4 right-4 w-80 card shadow-lg z-[1001]">
       <div class="card-header flex items-center justify-between">
         <h3 class="font-medium text-gray-900">{{ selectedStation.name }}</h3>
-        <button @click="selectedStation = null" class="text-gray-400 hover:text-gray-600">
+        <button @click="closeInfoPanel" class="text-gray-400 hover:text-gray-600">
           <i class="fas fa-times"></i>
         </button>
       </div>
       <div class="card-body">
-        <div class="space-y-2">
+        <div class="space-y-3">
           <div class="flex items-center justify-between">
             <span class="text-sm text-gray-600">Status:</span>
             <span 
@@ -131,6 +169,22 @@
               {{ selectedStation.availablePorts }}/{{ selectedStation.totalPorts }}
             </span>
           </div>
+          <div v-if="selectedStation.location.address" class="mt-2">
+            <span class="text-sm text-gray-600">Address:</span>
+            <p class="text-sm text-gray-900 mt-1">{{ selectedStation.location.address }}</p>
+          </div>
+          <div v-if="selectedStation.amenities && selectedStation.amenities.length > 0" class="mt-2">
+            <span class="text-sm text-gray-600">Amenities:</span>
+            <div class="flex flex-wrap gap-1 mt-1">
+              <span 
+                v-for="amenity in selectedStation.amenities" 
+                :key="amenity"
+                class="badge badge-secondary text-xs"
+              >
+                {{ amenity }}
+              </span>
+            </div>
+          </div>
         </div>
         <div class="mt-4 flex space-x-2">
           <router-link 
@@ -152,8 +206,22 @@
 </template>
 
 <script>
-import { ref, reactive, computed, onMounted, onUnmounted } from 'vue'
+import { ref, reactive, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useStationsStore } from '@/stores/stations'
+import L from 'leaflet'
+
+// Fix for default markers in Leaflet with Vite
+import markerIcon from 'leaflet/dist/images/marker-icon.png'
+import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png'
+import markerShadow from 'leaflet/dist/images/marker-shadow.png'
+
+// Set default marker icons
+delete L.Icon.Default.prototype._getIconUrl
+L.Icon.Default.mergeOptions({
+  iconRetinaUrl: markerIcon2x,
+  iconUrl: markerIcon,
+  shadowUrl: markerShadow,
+})
 
 export default {
   name: 'MapView',
@@ -163,7 +231,7 @@ export default {
     // Reactive state
     const mapContainer = ref(null)
     const map = ref(null)
-    const markers = ref([])
+    const markers = ref(new Map()) // Use Map for better performance
     const selectedStation = ref(null)
     const isMapLoaded = ref(false)
     const loading = ref(true)
@@ -190,37 +258,71 @@ export default {
       return filtered
     })
 
-    // Google Maps integration (placeholder implementation)
+    const stationStats = computed(() => {
+      const stats = {
+        active: 0,
+        inactive: 0,
+        maintenance: 0,
+        outOfOrder: 0
+      }
+      
+      stations.value.forEach(station => {
+        switch (station.status) {
+          case 'Active':
+            stats.active++
+            break
+          case 'Inactive':
+            stats.inactive++
+            break
+          case 'Maintenance':
+            stats.maintenance++
+            break
+          case 'Out of Order':
+            stats.outOfOrder++
+            break
+        }
+      })
+      
+      return stats
+    })
+
+    // OpenStreetMap integration with Leaflet
     const initializeMap = async () => {
       loading.value = true
       mapError.value = null
       
       try {
-        // Check if Google Maps API is available
-        if (typeof google === 'undefined' || !google.maps) {
-          throw new Error('Google Maps API not loaded. Add your API key to environment variables.')
+        if (!mapContainer.value) {
+          throw new Error('Map container not found')
+        }
+
+        // Clear existing map if any
+        if (map.value) {
+          map.value.remove()
         }
         
-        // Initialize map
-        map.value = new google.maps.Map(mapContainer.value, {
-          center: { lat: 37.7749, lng: -122.4194 }, // Default to San Francisco
+        // Initialize Leaflet map with OpenStreetMap tiles
+        map.value = L.map(mapContainer.value, {
+          center: [37.7749, -122.4194], // Default to San Francisco
           zoom: 10,
-          styles: [
-            {
-              featureType: "poi",
-              elementType: "labels",
-              stylers: [{ visibility: "off" }]
-            }
-          ]
+          zoomControl: true,
+          scrollWheelZoom: true
         })
+        
+        // Add OpenStreetMap tile layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+          attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+          maxZoom: 19,
+          subdomains: ['a', 'b', 'c']
+        }).addTo(map.value)
         
         isMapLoaded.value = true
         await loadStationsOnMap()
         
       } catch (error) {
-        console.error('Failed to initialize Google Maps:', error)
+        console.error('Failed to initialize OpenStreetMap:', error)
         mapError.value = error.message
-        // Fallback: show stations in a list format
+        // Fallback: load stations data without map
         await loadStations()
       } finally {
         loading.value = false
@@ -229,75 +331,148 @@ export default {
 
     const loadStationsOnMap = async () => {
       try {
-        await stationsStore.fetchStations({ limit: 100 })
+        console.log('🔄 Loading stations for map...')
+        await stationsStore.fetchStations({ 
+          limit: 100,
+          page: 1
+        })
+        console.log('📊 Stations loaded:', stations.value.length)
+        console.log('📍 Station data:', stations.value)
         updateMapMarkers()
       } catch (error) {
         console.error('Failed to load stations:', error)
+        mapError.value = 'Failed to load charging stations data'
       }
     }
 
     const loadStations = async () => {
       try {
-        await stationsStore.fetchStations({ limit: 100 })
+        console.log('🔄 Loading stations fallback...')
+        await stationsStore.fetchStations({
+          limit: 100,
+          page: 1
+        })
+        console.log('📊 Stations loaded (fallback):', stations.value.length)
       } catch (error) {
         console.error('Failed to load stations:', error)
       }
     }
 
+    const createCustomIcon = (status) => {
+      const colors = {
+        'Active': '#10b981', // green-500
+        'Inactive': '#ef4444', // red-500
+        'Maintenance': '#f59e0b', // amber-500
+        'Out of Order': '#ef4444' // red-500
+      }
+      
+      const color = colors[status] || '#6b7280' // gray-500
+      
+      return L.divIcon({
+        className: 'custom-marker',
+        html: `
+          <div style="
+            background-color: ${color};
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+          ">
+            <i class="fas fa-charging-station" style="color: white; font-size: 10px;"></i>
+          </div>
+        `,
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12]
+      })
+    }
+
     const updateMapMarkers = () => {
       if (!map.value) return
       
+      console.log('🗺️ Updating map markers...')
+      console.log('📊 Filtered stations:', filteredStations.value.length)
+      
       // Clear existing markers
-      markers.value.forEach(marker => marker.setMap(null))
-      markers.value = []
+      markers.value.forEach(marker => {
+        map.value.removeLayer(marker)
+      })
+      markers.value.clear()
       
       // Add markers for filtered stations
-      filteredStations.value.forEach(station => {
-        if (station.location.latitude && station.location.longitude) {
-          const marker = new google.maps.Marker({
-            position: {
-              lat: station.location.latitude,
-              lng: station.location.longitude
-            },
-            map: map.value,
-            title: station.name,
-            icon: {
-              url: getMarkerIcon(station.status),
-              scaledSize: new google.maps.Size(30, 30)
-            }
+      const validStations = []
+      
+      filteredStations.value.forEach((station, index) => {
+        console.log(`🔍 Processing station ${index + 1}:`, station.name)
+        console.log(`📍 Location:`, station.location)
+        
+        if (station.location?.latitude && station.location?.longitude) {
+          console.log(`✅ Valid coordinates for ${station.name}: ${station.location.latitude}, ${station.location.longitude}`)
+          
+          const marker = L.marker(
+            [station.location.latitude, station.location.longitude],
+            { icon: createCustomIcon(station.status) }
+          )
+          
+          // Create popup content
+          const popupContent = `
+            <div class="p-2">
+              <h3 class="font-medium text-gray-900 mb-2">${station.name}</h3>
+              <div class="space-y-1 text-sm">
+                <div><strong>Status:</strong> <span class="status-${station.status.toLowerCase().replace(/ /g, '-')}">${station.status}</span></div>
+                <div><strong>Connector:</strong> ${station.connectorType}</div>
+                <div><strong>Power:</strong> ${station.powerOutput}kW</div>
+                <div><strong>Ports:</strong> ${station.availablePorts}/${station.totalPorts}</div>
+              </div>
+              <button 
+                onclick="window.selectStation('${station._id}')" 
+                class="mt-2 bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600"
+              >
+                View Details
+              </button>
+            </div>
+          `
+          
+          marker.bindPopup(popupContent, {
+            maxWidth: 250,
+            className: 'custom-popup'
           })
           
-          marker.addListener('click', () => {
+          // Add click event for info panel
+          marker.on('click', () => {
             selectedStation.value = station
           })
           
-          markers.value.push(marker)
+          marker.addTo(map.value)
+          markers.value.set(station._id, marker)
+          validStations.push(station)
+          console.log(`✅ Added marker for ${station.name}`)
+        } else {
+          console.log(`❌ Invalid coordinates for ${station.name}:`, station.location)
         }
       })
       
+      console.log(`🎯 Added ${validStations.length} markers to map`)
+      
       // Adjust map bounds to fit all markers
-      if (markers.value.length > 0) {
-        const bounds = new google.maps.LatLngBounds()
-        markers.value.forEach(marker => {
-          bounds.extend(marker.getPosition())
-        })
-        map.value.fitBounds(bounds)
+      if (validStations.length > 0) {
+        const group = new L.featureGroup(Array.from(markers.value.values()))
+        map.value.fitBounds(group.getBounds().pad(0.1))
+        console.log('🔍 Map bounds adjusted to fit all markers')
+      } else {
+        console.log('⚠️ No valid stations found, keeping default view')
       }
     }
 
-    const getMarkerIcon = (status) => {
-      const baseUrl = 'https://maps.google.com/mapfiles/ms/icons/'
-      switch (status) {
-        case 'Active':
-          return `${baseUrl}green-dot.png`
-        case 'Inactive':
-          return `${baseUrl}red-dot.png`
-        case 'Maintenance':
-          return `${baseUrl}yellow-dot.png`
-        case 'Out of Order':
-          return `${baseUrl}red-dot.png`
-        default:
-          return `${baseUrl}blue-dot.png`
+    // Global function for popup button clicks
+    window.selectStation = (stationId) => {
+      const station = stations.value.find(s => s._id === stationId)
+      if (station) {
+        selectedStation.value = station
       }
     }
 
@@ -313,19 +488,58 @@ export default {
       applyFilters()
     }
 
+    const refreshStations = async () => {
+      loading.value = true
+      try {
+        await stationsStore.fetchStations({ limit: 100 })
+        if (isMapLoaded.value) {
+          updateMapMarkers()
+        }
+      } catch (error) {
+        console.error('Failed to refresh stations:', error)
+      } finally {
+        loading.value = false
+      }
+    }
+
+    const closeInfoPanel = () => {
+      selectedStation.value = null
+    }
+
+    // Watch for changes in filtered stations
+    watch(filteredStations, () => {
+      if (isMapLoaded.value) {
+        updateMapMarkers()
+      }
+    })
+
     // Lifecycle hooks
-    onMounted(() => {
-      // Simulate map loading delay
+    onMounted(async () => {
+      // Load Leaflet CSS
+      if (!document.querySelector('link[href*="leaflet"]')) {
+        const link = document.createElement('link')
+        link.rel = 'stylesheet'
+        link.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css'
+        document.head.appendChild(link)
+      }
+      
+      // Initialize map after a short delay to ensure DOM is ready
       setTimeout(() => {
         if (mapContainer.value) {
           initializeMap()
         }
-      }, 1000)
+      }, 100)
     })
 
     onUnmounted(() => {
-      // Cleanup markers
-      markers.value.forEach(marker => marker.setMap(null))
+      // Cleanup
+      if (map.value) {
+        map.value.remove()
+        map.value = null
+      }
+      markers.value.clear()
+      // Remove global function
+      delete window.selectStation
     })
 
     return {
@@ -337,13 +551,61 @@ export default {
       filters,
       stations,
       filteredStations,
+      stationStats,
       applyFilters,
-      clearFilters
+      clearFilters,
+      refreshStations,
+      closeInfoPanel,
+      initializeMap
     }
   }
 }
 </script>
 
 <style scoped>
-/* Additional map-specific styles can be added here */
+/* Custom styles for the map */
+:deep(.custom-popup .leaflet-popup-content-wrapper) {
+  border-radius: 8px;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+}
+
+:deep(.custom-popup .leaflet-popup-content) {
+  margin: 0;
+}
+
+:deep(.status-active) {
+  color: #10b981;
+  font-weight: 600;
+}
+
+:deep(.status-inactive) {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+:deep(.status-maintenance) {
+  color: #f59e0b;
+  font-weight: 600;
+}
+
+:deep(.status-out-of-order) {
+  color: #ef4444;
+  font-weight: 600;
+}
+
+/* Custom marker animation */
+:deep(.custom-marker) {
+  transition: transform 0.2s ease;
+}
+
+:deep(.custom-marker:hover) {
+  transform: scale(1.1);
+}
+
+/* Ensure map container has proper styling */
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.5rem;
+}
 </style> 

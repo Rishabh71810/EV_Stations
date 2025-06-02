@@ -59,11 +59,19 @@ export const useStationsStore = defineStore('stations', {
         this.loading = true
         this.error = null
         
+        // Only include non-empty filter values to avoid validation errors
+        const cleanFilters = {}
+        if (this.filters.status) cleanFilters.status = this.filters.status
+        if (this.filters.connectorType) cleanFilters.connectorType = this.filters.connectorType
+        if (this.filters.minPowerOutput) cleanFilters.minPowerOutput = this.filters.minPowerOutput
+        if (this.filters.maxPowerOutput) cleanFilters.maxPowerOutput = this.filters.maxPowerOutput
+        
         const queryParams = {
           ...params,
-          ...this.filters,
-          page: this.pagination.currentPage
+          ...cleanFilters
         }
+        
+        console.log('🔍 API Request params:', queryParams)
         
         const response = await stationsAPI.getStations(queryParams)
         
@@ -74,6 +82,7 @@ export const useStationsStore = defineStore('stations', {
         
         return response
       } catch (error) {
+        console.error('❌ API Error:', error.response?.data || error)
         this.error = error.response?.data?.message || 'Failed to fetch stations'
         throw error
       } finally {

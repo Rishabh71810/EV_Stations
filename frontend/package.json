@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "@google-cloud/translate": "^8.0.2",
-    "@googlemaps/js-api-loader": "^1.16.2",
     "axios": "^1.6.2",
+    "leaflet": "^1.9.4",
     "pinia": "^2.1.7",
     "vue": "^3.3.8",
     "vue-router": "^4.2.5"

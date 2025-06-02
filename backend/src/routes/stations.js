@@ -20,25 +20,22 @@ const {
 
 const router = express.Router();
 
-// All routes require authentication
+// Public routes (no authentication required for map viewing)
+router.get('/', validateStationQuery, handleValidationErrors, getStations);
+router.get('/stats', getStationStats);
+router.get('/:id', validateObjectId('id'), handleValidationErrors, getStation);
+
+// Authentication required for all other routes
 router.use(authenticateToken);
 
-// Statistics route (must be before /:id route)
-router.get('/stats', getStationStats);
-
-// Status and connector type routes (must be before /:id route)
+// Status and connector type routes
 router.get('/status/:status', getStationsByStatus);
 router.get('/connector/:type', getStationsByConnectorType);
 
-// Main CRUD routes
-router.route('/')
-  .get(validateStationQuery, handleValidationErrors, getStations)
-  .post(validateStation, handleValidationErrors, createStation);
-
-router.route('/:id')
-  .get(validateObjectId('id'), handleValidationErrors, getStation)
-  .put(validateObjectId('id'), validateStation, handleValidationErrors, updateStation)
-  .delete(validateObjectId('id'), handleValidationErrors, deleteStation);
+// Protected CRUD routes
+router.post('/', validateStation, handleValidationErrors, createStation);
+router.put('/:id', validateObjectId('id'), validateStation, handleValidationErrors, updateStation);
+router.delete('/:id', validateObjectId('id'), handleValidationErrors, deleteStation);
 
 // Availability update route
 router.patch('/:id/availability', 
