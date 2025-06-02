@@ -3,7 +3,7 @@ import { mockStationsAPI } from './mockApi'
 
 // Create axios instance
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000/api',
+  baseURL: 'https://ev-stations-backend.vercel.app/api',  // Your Vercel backend URL
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json'
