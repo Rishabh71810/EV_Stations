@@ -12,15 +12,21 @@ export default defineConfig({
   },
   server: {
     port: 3000,
-    host: true
+    host: true,
+    proxy: {
+      '/api': {
+        target: 'http://localhost:5000',
+        changeOrigin: true
+      }
+    }
   },
   build: {
     outDir: 'dist',
     sourcemap: true
   },
   define: {
-    // Ensure proper environment variable defaults for production
-    'import.meta.env.VITE_USE_LOCAL_BACKEND': JSON.stringify(false),
-    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('')
+    // Use real backend in production
+    'import.meta.env.VITE_USE_LOCAL_BACKEND': JSON.stringify(true),
+    'import.meta.env.VITE_API_BASE_URL': JSON.stringify('https://ev-stations-backend.vercel.app/api')
   }
 }) 

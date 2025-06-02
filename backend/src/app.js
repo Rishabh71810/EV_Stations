@@ -3,6 +3,7 @@ const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const morgan = require('morgan');
+const compression = require('compression');
 
 // Import routes
 const authRoutes = require('./routes/auth');
@@ -18,13 +19,15 @@ const app = express();
 app.use(helmet());
 
 // CORS configuration
-const corsOptions = {
-  origin: process.env.CORS_ORIGIN || 'http://localhost:3000',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true
-};
-app.use(cors(corsOptions));
+app.use(cors({
+  origin: [
+    'https://ev-stations-lemon.vercel.app',  // Your deployed frontend
+    'http://localhost:3000'                  // Local development
+  ],
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
 
 // Rate limiting
 const limiter = rateLimit({
@@ -44,6 +47,9 @@ if (process.env.NODE_ENV === 'development') {
 } else {
   app.use(morgan('combined'));
 }
+
+// Compression middleware
+app.use(compression());
 
 // Body parsing middleware
 app.use(express.json({ limit: '10mb' }));

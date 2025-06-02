@@ -19,7 +19,7 @@ const mockStations = [
   },
   {
     _id: '2',
-    name: 'Palo Alto Tesla Supercharger',
+    name: 'Tesla Supercharger Station',
     location: {
       latitude: 37.4419,
       longitude: -122.1430,
@@ -29,27 +29,44 @@ const mockStations = [
     },
     status: 'Active',
     powerOutput: 250,
-    connectorType: 'Tesla Supercharger',
+    connectorType: 'Tesla',
     totalPorts: 12,
-    availablePorts: 10,
+    availablePorts: 8,
     amenities: ['WiFi', 'Shopping']
   },
   {
     _id: '3',
-    name: 'Berkeley Campus Charger',
+    name: 'City Center Fast Charging',
     location: {
       latitude: 37.8715,
       longitude: -122.2730,
-      address: '789 Telegraph Avenue',
-      city: 'Berkeley',
+      address: '789 Main Street',
+      city: 'Oakland',
       state: 'CA'
     },
     status: 'Active',
-    powerOutput: 50,
+    powerOutput: 100,
+    connectorType: 'CCS2',
+    totalPorts: 6,
+    availablePorts: 4,
+    amenities: ['WiFi', 'Cafe']
+  },
+  {
+    _id: '4',
+    name: 'Shopping Mall Charging Station',
+    location: {
+      latitude: 37.5630,
+      longitude: -122.3255,
+      address: '321 Mall Drive',
+      city: 'San Mateo',
+      state: 'CA'
+    },
+    status: 'Active',
+    powerOutput: 75,
     connectorType: 'Type 2',
-    totalPorts: 4,
-    availablePorts: 3,
-    amenities: ['WiFi', 'Parking']
+    totalPorts: 10,
+    availablePorts: 7,
+    amenities: ['Shopping', 'Restaurants', 'WiFi']
   }
 ];
 
