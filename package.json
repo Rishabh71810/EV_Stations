@@ -1,0 +1,27 @@
+{
+  "name": "ev-charging-station-management",
+  "version": "1.0.0",
+  "description": "EV Charging Station Management System",
+  "main": "index.js",
+  "scripts": {
+    "build": "cd frontend && npm run build",
+    "dev": "cd frontend && npm run dev",
+    "start": "cd backend && npm start",
+    "install-frontend": "cd frontend && npm install",
+    "install-backend": "cd backend && npm install",
+    "install-all": "npm run install-frontend && npm run install-backend"
+  },
+  "keywords": [
+    "ev",
+    "charging-station",
+    "vue",
+    "nodejs",
+    "openstreetmap"
+  ],
+  "author": "Your Name",
+  "license": "MIT",
+  "workspaces": [
+    "frontend",
+    "backend"
+  ]
+} 
