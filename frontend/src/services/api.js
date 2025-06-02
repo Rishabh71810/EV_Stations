@@ -3,11 +3,13 @@ import { mockStationsAPI } from './mockApi'
 
 // Create axios instance
 const api = axios.create({
-  baseURL: 'https://ev-stations-backend.vercel.app/api',  // Your Vercel backend URL
-  timeout: 10000,
+  baseURL: 'https://ev-stations-backend.vercel.app/api',
+  timeout: 15000,
   headers: {
-    'Content-Type': 'application/json'
-  }
+    'Content-Type': 'application/json',
+    'Accept': 'application/json'
+  },
+  withCredentials: false // Important for CORS
 })
 
 // Request interceptor to add auth token
@@ -17,6 +19,8 @@ api.interceptors.request.use(
     if (token) {
       config.headers.Authorization = `Bearer ${token}`
     }
+    // Add CORS headers to every request
+    config.headers['Access-Control-Allow-Origin'] = '*'
     return config
   },
   (error) => {
@@ -127,7 +131,8 @@ export const stationsAPI = {
 
 // Add environment info for debugging
 console.log('🔧 API Configuration:', {
-  baseURL: api.defaults.baseURL
+  baseURL: api.defaults.baseURL,
+  headers: api.defaults.headers
 })
 
 export default api 
